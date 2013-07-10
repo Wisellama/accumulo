@@ -110,6 +110,7 @@ public class Tables {
   
   public static void clearCache(Instance instance) {
     getZooCache(instance).clear(ZooUtil.getRoot(instance) + Constants.ZTABLES);
+    getZooCache(instance).clear(ZooUtil.getRoot(instance) + Constants.ZNAMESPACES);
   }
   
   public static String getPrintableTableNameFromId(Map<String,String> tidToNameMap, String tableId) {
@@ -174,7 +175,6 @@ public class Tables {
   
   public static String getNamespace(Instance instance, String tableId) {
     ZooCache zc = getZooCache(instance);
-    zc.clear();
     byte[] n = zc.get(ZooUtil.getRoot(instance) + Constants.ZTABLES + "/" + tableId + Constants.ZTABLE_NAMESPACE);
     return new String(n, Constants.UTF8);
   }
