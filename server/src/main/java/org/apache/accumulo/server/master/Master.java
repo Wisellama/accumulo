@@ -122,6 +122,7 @@ import org.apache.accumulo.server.master.tableOps.BulkImport;
 import org.apache.accumulo.server.master.tableOps.CancelCompactions;
 import org.apache.accumulo.server.master.tableOps.ChangeTableState;
 import org.apache.accumulo.server.master.tableOps.CloneTable;
+import org.apache.accumulo.server.master.tableOps.CloneTableNamespace;
 import org.apache.accumulo.server.master.tableOps.CompactRange;
 import org.apache.accumulo.server.master.tableOps.CreateTable;
 import org.apache.accumulo.server.master.tableOps.CreateTableNamespace;
@@ -290,11 +291,13 @@ public class Master implements LiveTServerSet.Listener, TableObserver, CurrentSt
         
         zoo.putPersistentData(defaultTableNamespace, new byte[0], NodeExistsPolicy.SKIP);
         zoo.putPersistentData(defaultTableNamespace + Constants.ZNAMESPACE_CONF, new byte[0], NodeExistsPolicy.SKIP);
-        zoo.putPersistentData(defaultTableNamespace + Constants.ZNAMESPACE_NAME, Constants.DEFAULT_TABLE_NAMESPACE.getBytes(Constants.UTF8), NodeExistsPolicy.SKIP);
+        zoo.putPersistentData(defaultTableNamespace + Constants.ZNAMESPACE_NAME, Constants.DEFAULT_TABLE_NAMESPACE.getBytes(Constants.UTF8),
+            NodeExistsPolicy.SKIP);
         
         zoo.putPersistentData(systemTableNamespace, new byte[0], NodeExistsPolicy.SKIP);
         zoo.putPersistentData(systemTableNamespace + Constants.ZNAMESPACE_CONF, new byte[0], NodeExistsPolicy.SKIP);
-        zoo.putPersistentData(systemTableNamespace + Constants.ZNAMESPACE_NAME, Constants.SYSTEM_TABLE_NAMESPACE.getBytes(Constants.UTF8), NodeExistsPolicy.SKIP);
+        zoo.putPersistentData(systemTableNamespace + Constants.ZNAMESPACE_NAME, Constants.SYSTEM_TABLE_NAMESPACE.getBytes(Constants.UTF8),
+            NodeExistsPolicy.SKIP);
         
         for (Entry<String,String> table : Tables.getIdToNameMap(instance).entrySet()) {
           if (table.getValue().equals(MetadataTable.NAME) || table.getValue().equals(RootTable.NAME)) {
@@ -1084,8 +1087,8 @@ public class Master implements LiveTServerSet.Listener, TableObserver, CurrentSt
         case CREATE: {
           String namespace = ByteBufferUtil.toString(arguments.get(0));
           // TODO security check once namespace permissions exist (ACCUMULO-1479)
-          
-          checkTableNamespaceName(namespace);
+          checkNotSystemNamespace(namespace, TableOperation.CREATE);
+          checkTableNamespaceName(namespace, TableOperation.CREATE);
           fate.seedTransaction(opid, new TraceRepo<Master>(new CreateTableNamespace(c.getPrincipal(), namespace, options)), autoCleanup);
           break;
         }
@@ -1095,15 +1098,45 @@ public class Master implements LiveTServerSet.Listener, TableObserver, CurrentSt
           String newName = ByteBufferUtil.toString(arguments.get(1));
           // TODO security check (ACCUMULO-1479)
           String namespaceId = checkNamespaceId(oldName, TableOperation.RENAME);
-          checkTableNamespaceName(newName);
+          checkNotSystemNamespace(oldName, TableOperation.RENAME);
+          checkNotSystemNamespace(newName, TableOperation.RENAME);
+          checkTableNamespaceName(newName, TableOperation.RENAME);
           fate.seedTransaction(opid, new TraceRepo<Master>(new RenameTableNamespace(namespaceId, oldName, newName)), autoCleanup);
           break;
         }
         case DELETE: {
           String namespace = ByteBufferUtil.toString(arguments.get(0));
+          checkNotSystemNamespace(namespace, TableOperation.DELETE);
           String namespaceId = checkNamespaceId(namespace, TableOperation.DELETE);
           // TODO security check (ACCUMULO-1479)
           fate.seedTransaction(opid, new TraceRepo<Master>(new DeleteTableNamespace(namespaceId)), autoCleanup);
+          break;
+        }
+        case CLONE: {
+          String namespaceId = ByteBufferUtil.toString(arguments.get(0));
+          String namespace = ByteBufferUtil.toString(arguments.get(1));
+          checkNotSystemNamespace(namespace, TableOperation.CLONE);
+          checkTableNamespaceName(namespace, TableOperation.CLONE);
+          // TODO security check (ACCUMULO-1479)
+          
+          Map<String,String> propertiesToSet = new HashMap<String,String>();
+          Set<String> propertiesToExclude = new HashSet<String>();
+          
+          for (Entry<String,String> entry : options.entrySet()) {
+            if (entry.getValue() == null) {
+              propertiesToExclude.add(entry.getKey());
+              continue;
+            }
+            if (!TablePropUtil.isPropertyValid(entry.getKey(), entry.getValue())) {
+              throw new ThriftTableOperationException(null, namespace, TableOperation.CLONE, TableOperationExceptionType.OTHER, "Property or value not valid "
+                  + entry.getKey() + "=" + entry.getValue());
+            }
+            propertiesToSet.put(entry.getKey(), entry.getValue());
+          }
+          
+          fate.seedTransaction(opid, new TraceRepo<Master>(new CloneTableNamespace(c.getPrincipal(), namespaceId, namespace, propertiesToSet,
+              propertiesToExclude)), autoCleanup);
+          
           break;
         }
         default:
@@ -1112,14 +1145,27 @@ public class Master implements LiveTServerSet.Listener, TableObserver, CurrentSt
       
     }
     
-    protected void checkTableNamespaceName(String namespace) throws ThriftTableOperationException {
-      if (TableNamespaces.getNameToIdMap(instance).containsKey(namespace)) {
-        String why = "Table namespace already exists: " + namespace;
-        throw new ThriftTableOperationException(null, namespace, TableOperation.CREATE, TableOperationExceptionType.EXISTS, why);
+    private void checkNotSystemNamespace(String namespace, TableOperation operation) throws ThriftTableOperationException {
+      if (Constants.SYSTEM_TABLE_NAMESPACE.equals(namespace)) {
+        String why = "Table namespaces cannot be == " + Constants.SYSTEM_TABLE_NAMESPACE;
+        log.warn(why);
+        throw new ThriftTableOperationException(null, namespace, operation, TableOperationExceptionType.OTHER, why);
       }
     }
     
-    protected String checkNamespaceId(String namespace, TableOperation operation) throws ThriftTableOperationException {
+    private void checkTableNamespaceName(String namespace, TableOperation operation) throws ThriftTableOperationException {
+      if (!namespace.matches(Constants.VALID_TABLE_NAMESPACE_REGEX)) {
+        String why = "Table namespaces must only contain word characters (letters, digits, and underscores): " + namespace;
+        log.warn(why);
+        throw new ThriftTableOperationException(null, namespace, operation, TableOperationExceptionType.OTHER, why);
+      }
+      if (TableNamespaces.getNameToIdMap(instance).containsKey(namespace)) {
+        String why = "Table namespace already exists: " + namespace;
+        throw new ThriftTableOperationException(null, namespace, operation, TableOperationExceptionType.EXISTS, why);
+      }
+    }
+    
+    private String checkNamespaceId(String namespace, TableOperation operation) throws ThriftTableOperationException {
       final String namespaceId = TableNamespaces.getNameToIdMap(getConfiguration().getInstance()).get(namespace);
       if (namespaceId == null)
         throw new ThriftTableOperationException(null, namespace, operation, TableOperationExceptionType.NOTFOUND, null);
