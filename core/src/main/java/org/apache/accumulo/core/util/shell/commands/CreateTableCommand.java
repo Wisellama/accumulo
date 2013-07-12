@@ -19,7 +19,9 @@ package org.apache.accumulo.core.util.shell.commands;
 import java.io.File;
 import java.io.IOException;
 import java.util.Map.Entry;
+import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -29,11 +31,14 @@ import org.apache.accumulo.core.client.AccumuloSecurityException;
 import org.apache.accumulo.core.client.TableExistsException;
 import org.apache.accumulo.core.client.TableNotFoundException;
 import org.apache.accumulo.core.client.admin.TimeType;
+import org.apache.accumulo.core.client.impl.Tables;
 import org.apache.accumulo.core.conf.Property;
 import org.apache.accumulo.core.iterators.IteratorUtil;
 import org.apache.accumulo.core.security.VisibilityConstraint;
 import org.apache.accumulo.core.util.shell.Shell;
+import org.apache.accumulo.core.util.shell.Token;
 import org.apache.accumulo.core.util.shell.Shell.Command;
+import org.apache.accumulo.core.util.shell.Shell.Command.CompletionSet;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionGroup;
@@ -106,8 +111,13 @@ public class CreateTableCommand extends Command {
     if (partitions.size() > 0) {
       shellState.getConnector().tableOperations().addSplits(tableName, partitions);
     }
-    shellState.setTableName(tableName); // switch shell to new table
-    // context
+    
+    String n = Tables.extractNamespace(tableName);
+    String table = tableName;
+    if (n.equals(Constants.DEFAULT_TABLE_NAMESPACE) || n.equals(Constants.SYSTEM_TABLE_NAMESPACE)) {
+      table = Tables.extractTableName(tableName);
+    }
+    shellState.setTableName(table); // switch shell to new table context
     
     if (cl.hasOption(createTableNoDefaultIters.getOpt())) {
       for (String key : IteratorUtil.generateInitialTableProperties(true).keySet()) {
@@ -202,5 +212,10 @@ public class CreateTableCommand extends Command {
   @Override
   public int numArgs() {
     return 1;
+  }
+  
+  @Override
+  public void registerCompletion(final Token root, final Map<Command.CompletionSet,Set<String>> special) {
+    registerCompletionForTableNamespaces(root, special);
   }
 }
