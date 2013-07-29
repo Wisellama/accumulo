@@ -706,12 +706,13 @@ public class TableOperationsImpl extends TableOperationsHelper {
     Map<String,String> opts = new HashMap<String,String>();
     opts.putAll(propertiesToSet);
     for (String prop : excludeProps)
-      opts.put(prop, null);
+      opts.put(prop, new String());
     
     doTableOperation(TableOperation.CLONE, args, opts);
   }
   
   // get the properties that are only in the table namespace so that we can exclude them when copying table properties
+  // TODO ACCUMULO-1565 needs fixed first
   private HashSet<String> getUniqueNamespaceProperties(String namespace, String table) throws TableNotFoundException, AccumuloException {
     HashSet<String> props = new HashSet<String>();
     try {

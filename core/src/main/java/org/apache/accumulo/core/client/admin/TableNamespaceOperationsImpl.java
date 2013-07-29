@@ -52,7 +52,7 @@ import org.apache.accumulo.core.client.impl.thrift.ThriftTableOperationException
 import org.apache.accumulo.core.iterators.IteratorUtil;
 import org.apache.accumulo.core.master.thrift.MasterClientService;
 import org.apache.accumulo.core.master.thrift.TableOperation;
-import org.apache.accumulo.core.security.thrift.TCredentials;
+import org.apache.accumulo.core.security.Credentials;
 import org.apache.accumulo.core.util.ArgumentChecker;
 import org.apache.accumulo.core.util.ByteBufferUtil;
 import org.apache.accumulo.core.util.OpTimer;
@@ -69,7 +69,7 @@ import org.apache.thrift.transport.TTransportException;
  */
 public class TableNamespaceOperationsImpl extends TableNamespaceOperationsHelper {
   private Instance instance;
-  private TCredentials credentials;
+  private Credentials credentials;
   
   private static final Logger log = Logger.getLogger(TableOperations.class);
   
@@ -79,7 +79,7 @@ public class TableNamespaceOperationsImpl extends TableNamespaceOperationsHelper
    * @param credentials
    *          the username/password for this connection
    */
-  public TableNamespaceOperationsImpl(Instance instance, TCredentials credentials) {
+  public TableNamespaceOperationsImpl(Instance instance, Credentials credentials) {
     ArgumentChecker.notNull(instance, credentials);
     this.instance = instance;
     this.credentials = credentials;
@@ -173,7 +173,7 @@ public class TableNamespaceOperationsImpl extends TableNamespaceOperationsHelper
       MasterClientService.Iface client = null;
       try {
         client = MasterClient.getConnectionWithRetry(instance);
-        return client.beginTableNamespaceOperation(Tracer.traceInfo(), credentials);
+        return client.beginTableNamespaceOperation(Tracer.traceInfo(), credentials.toThrift(instance));
       } catch (TTransportException tte) {
         log.debug("Failed to call beginTableOperation(), retrying ... ", tte);
         UtilWaitThread.sleep(100);
@@ -189,7 +189,7 @@ public class TableNamespaceOperationsImpl extends TableNamespaceOperationsHelper
       MasterClientService.Iface client = null;
       try {
         client = MasterClient.getConnectionWithRetry(instance);
-        client.executeTableNamespaceOperation(Tracer.traceInfo(), credentials, opid, op, args, opts, autoCleanUp);
+        client.executeTableNamespaceOperation(Tracer.traceInfo(), credentials.toThrift(instance), opid, op, args, opts, autoCleanUp);
         break;
       } catch (TTransportException tte) {
         log.debug("Failed to call executeTableOperation(), retrying ... ", tte);
@@ -205,7 +205,7 @@ public class TableNamespaceOperationsImpl extends TableNamespaceOperationsHelper
       MasterClientService.Iface client = null;
       try {
         client = MasterClient.getConnectionWithRetry(instance);
-        return client.waitForTableNamespaceOperation(Tracer.traceInfo(), credentials, opid);
+        return client.waitForTableNamespaceOperation(Tracer.traceInfo(), credentials.toThrift(instance), opid);
       } catch (TTransportException tte) {
         log.debug("Failed to call waitForTableOperation(), retrying ... ", tte);
         UtilWaitThread.sleep(100);
@@ -220,7 +220,7 @@ public class TableNamespaceOperationsImpl extends TableNamespaceOperationsHelper
       MasterClientService.Iface client = null;
       try {
         client = MasterClient.getConnectionWithRetry(instance);
-        client.finishTableNamespaceOperation(Tracer.traceInfo(), credentials, opid);
+        client.finishTableNamespaceOperation(Tracer.traceInfo(), credentials.toThrift(instance), opid);
         break;
       } catch (TTransportException tte) {
         log.debug("Failed to call finishTableOperation(), retrying ... ", tte);
@@ -461,7 +461,7 @@ public class TableNamespaceOperationsImpl extends TableNamespaceOperationsHelper
     MasterClient.execute(instance, new ClientExec<MasterClientService.Client>() {
       @Override
       public void execute(MasterClientService.Client client) throws Exception {
-        client.setTableNamespaceProperty(Tracer.traceInfo(), credentials, namespace, property, value);
+        client.setTableNamespaceProperty(Tracer.traceInfo(), credentials.toThrift(instance), namespace, property, value);
       }
     });
   }
@@ -485,7 +485,7 @@ public class TableNamespaceOperationsImpl extends TableNamespaceOperationsHelper
     MasterClient.execute(instance, new ClientExec<MasterClientService.Client>() {
       @Override
       public void execute(MasterClientService.Client client) throws Exception {
-        client.removeTableNamespaceProperty(Tracer.traceInfo(), credentials, namespace, property);
+        client.removeTableNamespaceProperty(Tracer.traceInfo(), credentials.toThrift(instance), namespace, property);
       }
     });
   }
@@ -506,7 +506,7 @@ public class TableNamespaceOperationsImpl extends TableNamespaceOperationsHelper
       return ServerClient.executeRaw(instance, new ClientExecReturn<Map<String,String>,ClientService.Client>() {
         @Override
         public Map<String,String> execute(ClientService.Client client) throws Exception {
-          return client.getTableNamespaceConfiguration(Tracer.traceInfo(), credentials, namespace);
+          return client.getTableNamespaceConfiguration(Tracer.traceInfo(), credentials.toThrift(instance), namespace);
         }
       }).entrySet();
     } catch (ThriftTableOperationException e) {
