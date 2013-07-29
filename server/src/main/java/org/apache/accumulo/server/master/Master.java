@@ -648,7 +648,7 @@ public class Master implements LiveTServerSet.Listener, TableObserver, CurrentSt
         throw new ThriftSecurityException(c.getPrincipal(), SecurityErrorCode.PERMISSION_DENIED);
       
       try {
-        if (value == null) {
+        if (value == null || value.isEmpty()) {
           TablePropUtil.removeTableProperty(tableId, property);
         } else if (!TablePropUtil.setTableProperty(tableId, property, value)) {
           throw new Exception("Invalid table property.");
@@ -845,7 +845,7 @@ public class Master implements LiveTServerSet.Listener, TableObserver, CurrentSt
           Set<String> propertiesToExclude = new HashSet<String>();
           
           for (Entry<String,String> entry : options.entrySet()) {
-            if (entry.getValue() == null) {
+            if (entry.getValue() == null || entry.getValue().isEmpty()) {
               propertiesToExclude.add(entry.getKey());
               continue;
             }
