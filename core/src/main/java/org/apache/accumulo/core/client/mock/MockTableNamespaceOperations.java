@@ -36,6 +36,7 @@ import org.apache.accumulo.core.client.admin.DiskUsage;
 import org.apache.accumulo.core.client.admin.TableNamespaceOperationsHelper;
 import org.apache.accumulo.core.client.admin.TimeType;
 import org.apache.accumulo.core.client.impl.Tables;
+import org.apache.accumulo.core.security.Credentials;
 import org.apache.commons.lang.NotImplementedException;
 
 public class MockTableNamespaceOperations extends TableNamespaceOperationsHelper {
@@ -103,7 +104,7 @@ public class MockTableNamespaceOperations extends TableNamespaceOperationsHelper
     } else {
       for (String t : n.getTables(acu)) {
         try {
-          new MockConnector(username, acu, null).tableOperations().delete(t);
+          new MockConnector(new Credentials(username, null), acu, null).tableOperations().delete(t);
         } catch (TableNotFoundException e) {
           System.err.println("Table (" + e.getTableName() + ") not found while deleting namespace (" + namespace + ")");
         }
