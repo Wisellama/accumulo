@@ -104,7 +104,7 @@ public class MockTableNamespaceOperations extends TableNamespaceOperationsHelper
     } else {
       for (String t : n.getTables(acu)) {
         try {
-          new MockConnector(new Credentials(username, null), acu, null).tableOperations().delete(t);
+          new MockTableOperations(acu, username).delete(t);
         } catch (TableNotFoundException e) {
           System.err.println("Table (" + e.getTableName() + ") not found while deleting namespace (" + namespace + ")");
         }
@@ -180,8 +180,7 @@ public class MockTableNamespaceOperations extends TableNamespaceOperationsHelper
   
   @Override
   public void clone(String srcName, String newName, boolean flush, Map<String,String> propertiesToSet, Set<String> propertiesToExclude, Boolean copyTableProps)
-      throws AccumuloSecurityException, AccumuloException, TableNamespaceNotFoundException,
-      TableNamespaceExistsException {
+      throws AccumuloSecurityException, AccumuloException, TableNamespaceNotFoundException, TableNamespaceExistsException {
     // TODO Implement clone in Mock
     throw new NotImplementedException();
   }
