@@ -679,7 +679,7 @@ public class TableOperationsImpl extends TableOperationsHelper {
     String namespace = Tables.extractNamespace(newTableName);
     if (!namespaceExists(namespace)) {
       String info = "Table namespace not found while cloning table";
-      throw new RuntimeException(new TableNamespaceNotFoundException(null, namespace, info));
+      throw new IllegalArgumentException(new TableNamespaceNotFoundException(null, namespace, info));
     }
     
     String srcTableId = Tables.getTableId(instance, srcTableName);
@@ -755,7 +755,7 @@ public class TableOperationsImpl extends TableOperationsHelper {
     String namespace = Tables.extractNamespace(newTableName);
     if (!namespaceExists(namespace)) {
       String info = "Table namespace not found while renaming table";
-      throw new RuntimeException(new TableNamespaceNotFoundException(null, namespace, info));
+      throw new IllegalArgumentException(new TableNamespaceNotFoundException(null, namespace, info));
     }
     
     List<ByteBuffer> args = Arrays.asList(ByteBuffer.wrap(oldTableName.getBytes()), ByteBuffer.wrap(newTableName.getBytes()));
