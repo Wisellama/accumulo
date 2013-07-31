@@ -45,6 +45,7 @@ import org.apache.accumulo.core.client.Scanner;
 import org.apache.accumulo.core.client.TableNotFoundException;
 import org.apache.accumulo.core.client.admin.TimeType;
 import org.apache.accumulo.core.client.impl.TableNamespaces;
+import org.apache.accumulo.core.client.admin.TableOperationsImpl;
 import org.apache.accumulo.core.client.impl.Tables;
 import org.apache.accumulo.core.client.impl.ThriftTransportPool;
 import org.apache.accumulo.core.client.impl.thrift.SecurityErrorCode;
@@ -904,8 +905,8 @@ public class Master implements LiveTServerSet.Listener, TableObserver, CurrentSt
           Set<String> propertiesToExclude = new HashSet<String>();
           
           for (Entry<String,String> entry : options.entrySet()) {
-            if (entry.getValue() == null || entry.getValue().isEmpty()) {
-              propertiesToExclude.add(entry.getKey());
+            if (entry.getKey().startsWith(TableOperationsImpl.CLONE_EXCLUDE_PREFIX)) {
+              propertiesToExclude.add(entry.getKey().substring(TableOperationsImpl.CLONE_EXCLUDE_PREFIX.length()));
               continue;
             }
             
