@@ -54,6 +54,7 @@ import org.apache.accumulo.core.security.Authorizations;
 import org.apache.accumulo.core.security.Credentials;
 import org.apache.accumulo.core.security.SystemPermission;
 import org.apache.accumulo.core.security.TablePermission;
+import org.apache.accumulo.core.security.TableNamespacePermission;
 import org.apache.accumulo.core.security.thrift.TCredentials;
 import org.apache.accumulo.core.util.CachedConfiguration;
 import org.apache.accumulo.server.conf.ServerConfiguration;
@@ -185,6 +186,13 @@ public class ClientServiceHandler implements ClientService.Iface {
   }
   
   @Override
+  public void grantTableNamespacePermission(TInfo tinfo, TCredentials credentials, String user, String tableNamespace, byte permission) throws ThriftSecurityException,
+      ThriftTableOperationException {
+    String namespaceId = checkTableNamespaceId(tableNamespace, TableOperation.PERMISSION);
+    security.grantTableNamespacePermission(credentials, user, namespaceId, TableNamespacePermission.getPermissionById(permission));
+  }
+  
+  @Override
   public void revokeSystemPermission(TInfo tinfo, TCredentials credentials, String user, byte permission) throws ThriftSecurityException {
     security.revokeSystemPermission(credentials, user, SystemPermission.getPermissionById(permission));
   }
@@ -206,6 +214,20 @@ public class ClientServiceHandler implements ClientService.Iface {
       ThriftTableOperationException {
     String tableId = checkTableId(tableName, TableOperation.PERMISSION);
     return security.hasTablePermission(credentials, user, tableId, TablePermission.getPermissionById(tblPerm));
+  }
+  
+  @Override
+  public boolean hasTableNamespacePermission(TInfo tinfo, TCredentials credentials, String user, String tableNamespace, byte perm) throws ThriftSecurityException,
+      ThriftTableOperationException {
+    String namespaceId = checkTableNamespaceId(tableNamespace, TableOperation.PERMISSION);
+    return security.hasTableNamespacePermission(credentials, user, namespaceId, TableNamespacePermission.getPermissionById(perm));
+  }
+  
+  @Override
+  public void revokeTableNamespacePermission(TInfo tinfo, TCredentials credentials, String user, String tableNamespace, byte permission) throws ThriftSecurityException,
+      ThriftTableOperationException {
+    String namespaceId = checkTableNamespaceId(tableNamespace, TableOperation.PERMISSION);
+    security.revokeTableNamespacePermission(credentials, user, namespaceId, TableNamespacePermission.getPermissionById(permission));
   }
   
   @Override
