@@ -854,6 +854,11 @@ public class ShellServerIT {
     exec("setiter -tn thing2 -scan -class org.apache.accumulo.core.iterators.user.SummingCombiner -p 10 -n name", true);
     exec("listiter -tn thing2 -scan", true, "Summing", true);
     exec("deleteiter -tn thing2 -n name -scan", true);
+    exec("createuser dude");
+    exec("pass");
+    exec("pass");
+    exec("grant Namespace.CREATE_TABLE -tn thing2 -u dude", true);
+    exec("revoke Namespace.CREATE_TABLE -tn thing2 -u dude", true);
     
     // properties override and such
     exec("config -tn thing2 -s table.file.max=44444", true);

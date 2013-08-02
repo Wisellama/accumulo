@@ -18,9 +18,12 @@ package org.apache.accumulo.server.master.tableOps;
 
 import org.apache.accumulo.core.client.impl.Tables;
 import org.apache.accumulo.core.client.impl.thrift.TableOperation;
+import org.apache.accumulo.core.client.impl.thrift.ThriftSecurityException;
 import org.apache.accumulo.fate.Repo;
 import org.apache.accumulo.server.master.Master;
 import org.apache.accumulo.server.master.state.tables.TableManager;
+import org.apache.accumulo.server.security.AuditedSecurityOperation;
+import org.apache.accumulo.server.security.SystemCredentials;
 import org.apache.log4j.Logger;
 
 class NamespaceCleanUp extends MasterRepo {
@@ -51,12 +54,13 @@ class NamespaceCleanUp extends MasterRepo {
     }
     Tables.clearCache(master.getInstance());
     
-    // TODO remove any permissions associated with this once they exist (ACCUMULO-1479)
-    /*try {
-      AuditedSecurityOperation.getInstance().deleteTable(SecurityConstants.getSystemCredentials(), namespaceName);
+    // remove any permissions associated with this table namespace
+    try {
+      AuditedSecurityOperation.getInstance().deleteTableNamespace(SystemCredentials.get().toThrift(master.getInstance()), namespaceId);
     } catch (ThriftSecurityException e) {
       log.error(e.getMessage(), e);
-    }*/
+    }
+    
     
     Utils.unreserveTableNamespace(namespaceId, id, true);
     
