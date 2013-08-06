@@ -35,7 +35,6 @@ import org.apache.commons.collections.iterators.AbstractIteratorDecorator;
 public class TablesCommand extends Command {
   private Option tableIdOption;
   private Option disablePaginationOpt;
-  private Option tableNamespaceOpt;
   
   @SuppressWarnings("unchecked")
   @Override
@@ -45,8 +44,8 @@ public class TablesCommand extends Command {
     final Iterator<String> tableNames;
     final Iterator<String> tableIds;
     
-    if (cl.hasOption(tableNamespaceOpt.getOpt())) {
-      String namespace = shellState.getConnector().tableNamespaceOperations().namespaceIdMap().get(cl.getOptionValue(tableNamespaceOpt.getOpt()));
+    if (cl.hasOption(OptUtil.tableNamespaceOpt().getOpt())) {
+      String namespace = shellState.getConnector().tableNamespaceOperations().namespaceIdMap().get(OptUtil.getTableNamespaceOpt(cl, shellState));
       tableNames = TableNamespaces.getTableNames(shellState.getConnector().getInstance(), namespace).iterator();
       tableIds = TableNamespaces.getTableIds(shellState.getConnector().getInstance(), namespace).iterator();
     } else {
@@ -91,8 +90,7 @@ public class TablesCommand extends Command {
     o.addOption(tableIdOption);
     disablePaginationOpt = new Option("np", "no-pagination", false, "disable pagination of output");
     o.addOption(disablePaginationOpt);
-    tableNamespaceOpt = new Option(Shell.tableNamespaceOption, "table-namespace", true, "name of table namespace to list only its tables");
-    o.addOption(tableNamespaceOpt);
+    o.addOption(OptUtil.tableNamespaceOpt("name of table namespace to list only its tables"));
     return o;
   }
   

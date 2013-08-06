@@ -19,6 +19,7 @@ package org.apache.accumulo.core.client.admin;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.apache.accumulo.core.Constants;
 import org.apache.accumulo.core.client.AccumuloException;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
 import org.apache.accumulo.core.client.Instance;
+import org.apache.accumulo.core.client.IteratorSetting;
 import org.apache.accumulo.core.client.TableExistsException;
 import org.apache.accumulo.core.client.TableNamespaceExistsException;
 import org.apache.accumulo.core.client.TableNamespaceNotEmptyException;
@@ -49,7 +51,10 @@ import org.apache.accumulo.core.client.impl.Tables;
 import org.apache.accumulo.core.client.impl.thrift.ClientService;
 import org.apache.accumulo.core.client.impl.thrift.ThriftSecurityException;
 import org.apache.accumulo.core.client.impl.thrift.ThriftTableOperationException;
+import org.apache.accumulo.core.constraints.Constraint;
 import org.apache.accumulo.core.iterators.IteratorUtil;
+import org.apache.accumulo.core.iterators.SortedKeyValueIterator;
+import org.apache.accumulo.core.iterators.IteratorUtil.IteratorScope;
 import org.apache.accumulo.core.master.thrift.MasterClientService;
 import org.apache.accumulo.core.master.thrift.TableOperation;
 import org.apache.accumulo.core.security.Credentials;
@@ -367,16 +372,15 @@ public class TableNamespaceOperationsImpl extends TableNamespaceOperationsHelper
    * @throws AccumuloSecurityException
    *           when the user does not have the proper permissions
    * @throws AccumuloException
-   *          when there is a general accumulo error
+   *           when there is a general accumulo error
    * @throws TableNamespaceNotFoundException
-   *          If the old table namespace doesn't exist
+   *           If the old table namespace doesn't exist
    * @throws TableNamespaceExistsException
-   *          If the new table namespace already exists
+   *           If the new table namespace already exists
    */
   @Override
   public void clone(String srcName, String newName, boolean flush, Map<String,String> propertiesToSet, Set<String> propertiesToExclude, Boolean copyTableProps)
-      throws AccumuloSecurityException, AccumuloException, TableNamespaceNotFoundException,
-      TableNamespaceExistsException {
+      throws AccumuloSecurityException, AccumuloException, TableNamespaceNotFoundException, TableNamespaceExistsException {
     
     ArgumentChecker.notNull(srcName, newName);
     
@@ -401,10 +405,10 @@ public class TableNamespaceOperationsImpl extends TableNamespaceOperationsHelper
     
     for (String tableId : TableNamespaces.getTableIds(instance, namespaceId)) {
       try {
-      String tableName = Tables.getTableName(instance, tableId);
-      
-      String newTableName = newName + "." + Tables.extractTableName(tableName);
-      getTableOperations().clone(tableName, newTableName, flush, null, null);
+        String tableName = Tables.getTableName(instance, tableId);
+        
+        String newTableName = newName + "." + Tables.extractTableName(tableName);
+        getTableOperations().clone(tableName, newTableName, flush, null, null);
       } catch (TableNotFoundException e) {
         String why = "Table (" + tableId + ") dissappeared while cloning namespace (" + srcName + ")";
         throw new IllegalStateException(why);
@@ -600,4 +604,45 @@ public class TableNamespaceOperationsImpl extends TableNamespaceOperationsHelper
     return new TableOperationsImpl(instance, credentials);
   }
   
+  @Override
+  public void attachIterator(String namespace, IteratorSetting setting, EnumSet<IteratorScope> scopes) throws AccumuloSecurityException, AccumuloException,
+      TableNamespaceNotFoundException {
+    testClassLoad(namespace, setting.getIteratorClass(), SortedKeyValueIterator.class.getName());
+    super.attachIterator(namespace, setting, scopes);
+  }
+  
+  @Override
+  public int addConstraint(String namespace, String constraintClassName) throws AccumuloException, AccumuloSecurityException, TableNamespaceNotFoundException {
+    testClassLoad(namespace, constraintClassName, Constraint.class.getName());
+    return super.addConstraint(namespace, constraintClassName);
+  }
+  
+  @Override
+  public boolean testClassLoad(final String namespace, final String className, final String asTypeName) throws TableNamespaceNotFoundException,
+      AccumuloException, AccumuloSecurityException {
+    ArgumentChecker.notNull(namespace, className, asTypeName);
+    
+    try {
+      return ServerClient.executeRaw(instance, new ClientExecReturn<Boolean,ClientService.Client>() {
+        @Override
+        public Boolean execute(ClientService.Client client) throws Exception {
+          return client.checkTableNamespaceClass(Tracer.traceInfo(), credentials.toThrift(instance), namespace, className, asTypeName);
+        }
+      });
+    } catch (ThriftTableOperationException e) {
+      switch (e.getType()) {
+        case NOTFOUND:
+          throw new TableNamespaceNotFoundException(e);
+        case OTHER:
+        default:
+          throw new AccumuloException(e.description, e);
+      }
+    } catch (ThriftSecurityException e) {
+      throw new AccumuloSecurityException(e.user, e.code, e);
+    } catch (AccumuloException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new AccumuloException(e);
+    }
+  }
 }
