@@ -18,8 +18,8 @@ package org.apache.accumulo.core.util.shell.commands;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map.Entry;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.SortedSet;
@@ -36,9 +36,8 @@ import org.apache.accumulo.core.conf.Property;
 import org.apache.accumulo.core.iterators.IteratorUtil;
 import org.apache.accumulo.core.security.VisibilityConstraint;
 import org.apache.accumulo.core.util.shell.Shell;
-import org.apache.accumulo.core.util.shell.Token;
 import org.apache.accumulo.core.util.shell.Shell.Command;
-import org.apache.accumulo.core.util.shell.Shell.Command.CompletionSet;
+import org.apache.accumulo.core.util.shell.Token;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionGroup;
@@ -58,8 +57,9 @@ public class CreateTableCommand extends Command {
   private Option createTableOptFormatter;
   public static String testTable;
   
-  public int execute(final String fullCommand, final CommandLine cl, final Shell shellState) throws AccumuloException, AccumuloSecurityException, TableExistsException,
-      TableNotFoundException, IOException, ClassNotFoundException {
+  @Override
+  public int execute(final String fullCommand, final CommandLine cl, final Shell shellState) throws AccumuloException, AccumuloSecurityException,
+      TableExistsException, TableNotFoundException, IOException, ClassNotFoundException {
     
     final String testTableName = cl.getArgs()[0];
     
