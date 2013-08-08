@@ -709,7 +709,7 @@ public class ShellServerIT {
   @Test(timeout = 30 * 1000)
   public void systempermission() throws Exception {
     exec("systempermissions");
-    assertEquals(8, output.get().split("\n").length - 1);
+    assertEquals(11, output.get().split("\n").length - 1);
     exec("tablepermissions", true);
     assertEquals(6, output.get().split("\n").length - 1);
   }
