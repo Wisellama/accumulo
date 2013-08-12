@@ -305,8 +305,6 @@ public class Master implements LiveTServerSet.Listener, TableObserver, CurrentSt
         for (Entry<String,String> e : opts.entrySet()) {
           zoo.putPersistentData(defaultTableNamespace + Constants.ZNAMESPACE_CONF + "/" + e.getKey(), e.getValue().getBytes(Constants.UTF8),
               NodeExistsPolicy.SKIP);
-          zoo.putPersistentData(systemTableNamespace + Constants.ZNAMESPACE_CONF + "/" + e.getKey(), e.getValue().getBytes(Constants.UTF8),
-              NodeExistsPolicy.SKIP);
         }
         
         for (Entry<String,String> table : Tables.getIdToNameMap(instance).entrySet()) {
@@ -323,7 +321,7 @@ public class Master implements LiveTServerSet.Listener, TableObserver, CurrentSt
         ZKPermHandler perm = new ZKPermHandler();
         perm.initialize(instance.getInstanceID(), true);
         String users = ZooUtil.getRoot(instance) + "/users";
-        for (String user: zoo.getChildren(users)) {
+        for (String user : zoo.getChildren(users)) {
           zoo.putPersistentData(users + "/" + user + "/Namespaces", new byte[0], NodeExistsPolicy.SKIP);
           perm.grantTableNamespacePermission(user, Constants.SYSTEM_TABLE_NAMESPACE_ID, TableNamespacePermission.READ);
         }
@@ -911,7 +909,7 @@ public class Master implements LiveTServerSet.Listener, TableObserver, CurrentSt
             throw new ThriftSecurityException(c.getPrincipal(), SecurityErrorCode.PERMISSION_DENIED);
           
           fate.seedTransaction(opid, new TraceRepo<Master>(new RenameTable(tableId, oldTableName, newTableName)), autoCleanup);
-
+          
           break;
         }
         case CLONE: {
