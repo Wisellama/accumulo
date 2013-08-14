@@ -144,7 +144,8 @@ class SetupNamespacePermissions extends MasterRepo {
     SecurityOperation security = AuditedSecurityOperation.getInstance();
     for (TableNamespacePermission permission : TableNamespacePermission.values()) {
       try {
-        security.grantTableNamespacePermission(SystemCredentials.get().toThrift(env.getInstance()), tableNamespaceInfo.user, tableNamespaceInfo.namespaceId, permission);
+        security.grantTableNamespacePermission(SystemCredentials.get().toThrift(env.getInstance()), tableNamespaceInfo.user, tableNamespaceInfo.namespaceId,
+            permission);
       } catch (ThriftSecurityException e) {
         Logger.getLogger(FinishCreateTableNamespace.class).error(e.getMessage(), e);
         throw e;

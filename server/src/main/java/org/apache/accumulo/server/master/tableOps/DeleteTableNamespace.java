@@ -61,7 +61,6 @@ class NamespaceCleanUp extends MasterRepo {
       log.error(e.getMessage(), e);
     }
     
-    
     Utils.unreserveTableNamespace(namespaceId, id, true);
     
     Logger.getLogger(CleanUp.class).debug("Deleted table namespace " + namespaceId);

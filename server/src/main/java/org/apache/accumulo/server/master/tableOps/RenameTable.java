@@ -27,6 +27,7 @@ import org.apache.accumulo.core.zookeeper.ZooUtil;
 import org.apache.accumulo.fate.Repo;
 import org.apache.accumulo.fate.zookeeper.IZooReaderWriter;
 import org.apache.accumulo.fate.zookeeper.IZooReaderWriter.Mutator;
+import org.apache.accumulo.server.client.HdfsZooInstance;
 import org.apache.accumulo.server.master.Master;
 import org.apache.accumulo.server.master.state.tables.TableManager;
 import org.apache.accumulo.server.zookeeper.ZooReaderWriter;
@@ -46,10 +47,11 @@ public class RenameTable extends MasterRepo {
         + Utils.reserveTable(tableId, tid, true, true, TableOperation.RENAME);
   }
   
-  public RenameTable(String tableId, String oldTableName, String newTableName, Instance inst) {
+  public RenameTable(String tableId, String oldTableName, String newTableName) {
     this.tableId = tableId;
     this.oldTableName = oldTableName;
     this.newTableName = newTableName;
+    Instance inst = HdfsZooInstance.getInstance();
     this.namespaceId = Tables.getNamespace(inst, tableId);
   }
   

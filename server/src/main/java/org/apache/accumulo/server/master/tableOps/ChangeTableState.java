@@ -16,9 +16,12 @@
  */
 package org.apache.accumulo.server.master.tableOps;
 
+import org.apache.accumulo.core.client.Instance;
+import org.apache.accumulo.core.client.impl.Tables;
 import org.apache.accumulo.core.client.impl.thrift.TableOperation;
 import org.apache.accumulo.core.master.state.tables.TableState;
 import org.apache.accumulo.fate.Repo;
+import org.apache.accumulo.server.client.HdfsZooInstance;
 import org.apache.accumulo.server.master.Master;
 import org.apache.accumulo.server.master.state.tables.TableManager;
 import org.apache.log4j.Logger;
@@ -28,10 +31,13 @@ public class ChangeTableState extends MasterRepo {
   private static final long serialVersionUID = 1L;
   private String tableId;
   private TableOperation top;
+  private String namespaceId;
   
   public ChangeTableState(String tableId, TableOperation top) {
     this.tableId = tableId;
     this.top = top;
+    Instance inst = HdfsZooInstance.getInstance();
+    this.namespaceId = Tables.getNamespace(inst, tableId);
     
     if (top != TableOperation.ONLINE && top != TableOperation.OFFLINE)
       throw new IllegalArgumentException(top.toString());
@@ -40,7 +46,7 @@ public class ChangeTableState extends MasterRepo {
   @Override
   public long isReady(long tid, Master environment) throws Exception {
     // reserve the table so that this op does not run concurrently with create, clone, or delete table
-    return Utils.reserveTable(tableId, tid, true, true, top);
+    return Utils.reserveTableNamespace(namespaceId, tid, false, true, top) + Utils.reserveTable(tableId, tid, true, true, top);
   }
   
   @Override
@@ -51,6 +57,7 @@ public class ChangeTableState extends MasterRepo {
       ts = TableState.OFFLINE;
     
     TableManager.getInstance().transitionTableState(tableId, ts);
+    Utils.unreserveTableNamespace(namespaceId, tid, false);
     Utils.unreserveTable(tableId, tid, true);
     Logger.getLogger(ChangeTableState.class).debug("Changed table state " + tableId + " " + ts);
     env.getEventCoordinator().event("Set table state of %s to %s", tableId, ts);
@@ -59,6 +66,7 @@ public class ChangeTableState extends MasterRepo {
   
   @Override
   public void undo(long tid, Master env) throws Exception {
+    Utils.unreserveTableNamespace(namespaceId, tid, false);
     Utils.unreserveTable(tableId, tid, true);
   }
 }

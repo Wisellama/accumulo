@@ -70,6 +70,7 @@ class CompactionDriver extends MasterRepo {
   private String tableId;
   private byte[] startRow;
   private byte[] endRow;
+  private String namespaceId;
   
   public CompactionDriver(long compactId, String tableId, byte[] startRow, byte[] endRow) {
     
@@ -77,6 +78,8 @@ class CompactionDriver extends MasterRepo {
     this.tableId = tableId;
     this.startRow = startRow;
     this.endRow = endRow;
+    Instance inst = HdfsZooInstance.getInstance();
+    this.namespaceId = Tables.getNamespace(inst, tableId);
   }
   
   @Override
@@ -183,6 +186,7 @@ class CompactionDriver extends MasterRepo {
   public Repo<Master> call(long tid, Master environment) throws Exception {
     CompactRange.removeIterators(tid, tableId);
     Utils.getReadLock(tableId, tid).unlock();
+    Utils.getReadLock(namespaceId, tid).unlock();
     return null;
   }
   
@@ -200,6 +204,7 @@ public class CompactRange extends MasterRepo {
   private byte[] startRow;
   private byte[] endRow;
   private byte[] iterators;
+  private String namespaceId;
   
   public static class CompactionIterators implements Writable {
     byte[] startRow;
@@ -283,6 +288,8 @@ public class CompactRange extends MasterRepo {
     this.tableId = tableId;
     this.startRow = startRow.length == 0 ? null : startRow;
     this.endRow = endRow.length == 0 ? null : endRow;
+    Instance inst = HdfsZooInstance.getInstance();
+    this.namespaceId = Tables.getNamespace(inst, tableId);
     
     if (iterators.size() > 0) {
       this.iterators = WritableUtils.toByteArray(new CompactionIterators(this.startRow, this.endRow, iterators));
@@ -297,7 +304,8 @@ public class CompactRange extends MasterRepo {
   
   @Override
   public long isReady(long tid, Master environment) throws Exception {
-    return Utils.reserveTable(tableId, tid, false, true, TableOperation.COMPACT);
+    return Utils.reserveTableNamespace(namespaceId, tid, false, true, TableOperation.COMPACT)
+        + Utils.reserveTable(tableId, tid, false, true, TableOperation.COMPACT);
   }
   
   @Override
@@ -379,6 +387,7 @@ public class CompactRange extends MasterRepo {
     try {
       removeIterators(tid, tableId);
     } finally {
+      Utils.unreserveTableNamespace(namespaceId, tid, false);
       Utils.unreserveTable(tableId, tid, false);
     }
   }

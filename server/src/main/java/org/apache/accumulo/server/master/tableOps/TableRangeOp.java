@@ -16,6 +16,8 @@
  */
 package org.apache.accumulo.server.master.tableOps;
 
+import org.apache.accumulo.core.client.Instance;
+import org.apache.accumulo.core.client.impl.Tables;
 import org.apache.accumulo.core.client.impl.thrift.TableOperation;
 import org.apache.accumulo.core.client.impl.thrift.TableOperationExceptionType;
 import org.apache.accumulo.core.client.impl.thrift.ThriftTableOperationException;
@@ -23,6 +25,7 @@ import org.apache.accumulo.core.data.KeyExtent;
 import org.apache.accumulo.core.metadata.RootTable;
 import org.apache.accumulo.core.util.TextUtil;
 import org.apache.accumulo.fate.Repo;
+import org.apache.accumulo.server.client.HdfsZooInstance;
 import org.apache.accumulo.server.master.Master;
 import org.apache.accumulo.server.master.state.MergeInfo;
 import org.apache.accumulo.server.master.state.MergeInfo.Operation;
@@ -46,9 +49,12 @@ class TableRangeOpWait extends MasterRepo {
   
   private static final long serialVersionUID = 1L;
   private String tableId;
+  private String namespaceId;
   
   public TableRangeOpWait(String tableId) {
     this.tableId = tableId;
+    Instance inst = HdfsZooInstance.getInstance();
+    this.namespaceId = Tables.getNamespace(inst, tableId);
   }
   
   @Override
@@ -66,6 +72,7 @@ class TableRangeOpWait extends MasterRepo {
     MergeInfo mergeInfo = master.getMergeInfo(tableIdText);
     log.info("removing merge information " + mergeInfo);
     master.clearMergeState(tableIdText);
+    Utils.unreserveTableNamespace(namespaceId, tid, false);
     Utils.unreserveTable(tableId, tid, true);
     return null;
   }
@@ -80,10 +87,12 @@ public class TableRangeOp extends MasterRepo {
   private byte[] startRow;
   private byte[] endRow;
   private Operation op;
+  private String namespaceId;
   
   @Override
   public long isReady(long tid, Master environment) throws Exception {
-    return Utils.reserveTable(tableId, tid, true, true, TableOperation.MERGE);
+    return Utils.reserveTableNamespace(namespaceId, tid, false, true, TableOperation.MERGE)
+        + Utils.reserveTable(tableId, tid, true, true, TableOperation.MERGE);
   }
   
   public TableRangeOp(MergeInfo.Operation op, String tableId, Text startRow, Text endRow) throws ThriftTableOperationException {
@@ -92,6 +101,8 @@ public class TableRangeOp extends MasterRepo {
     this.startRow = TextUtil.getBytes(startRow);
     this.endRow = TextUtil.getBytes(endRow);
     this.op = op;
+    Instance inst = HdfsZooInstance.getInstance();
+    this.namespaceId = Tables.getNamespace(inst, tableId);
   }
   
   @Override
@@ -130,6 +141,7 @@ public class TableRangeOp extends MasterRepo {
     if (mergeInfo.getState() != MergeState.NONE)
       log.info("removing merge information " + mergeInfo);
     env.clearMergeState(tableIdText);
+    Utils.unreserveTableNamespace(namespaceId, tid, false);
     Utils.unreserveTable(tableId, tid, true);
   }
   
